@@ -75,6 +75,10 @@ class UCT2015Producer : public edm::EDProducer {
                                 unsigned int* egFlagsInAnnulus,
                                 unsigned int* mipInSecondRegion) const;
 
+
+                // 12x12 energy, not jet
+                double findEnergy12x12(int ieta, int iphi, const L1CaloRegionCollection& regions);
+
                 // Helper methods
 
                 void puSubtraction();
@@ -243,18 +247,10 @@ UCT2015Producer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
         if(puCorrectHI) puSubtraction();
 
         makeSums();
-        makeEGTaus();
-        // make sums and jets 0
-        makeSums();
         makeJets();
-        //corrected Jet and Tau collections
         corrJetList = correctJets(jetList,true);
-        // electrons and taus 
         makeEGTaus();
         makeTaus();
-        // nobody uses these
-        //corrRlxTauList = correctJets(rlxTauList,false);
-        //corrIsoTauList = correctJets(isoTauList,false);
 
 
         UCTCandidateCollectionPtr unpackedJets(new UCTCandidateCollection);
@@ -290,17 +286,17 @@ UCT2015Producer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
                 unpackedCorrJets->push_back(*jet);
         }
         /*
-        for(list<UCTCandidate>::iterator rlxTau = corrRlxTauList.begin();
-                        rlxTau != corrRlxTauList.end();
-                        rlxTau++) {
-                unpackedCorrRlxTaus->push_back(*rlxTau);
-        }
-        for(list<UCTCandidate>::iterator isoTau = corrIsoTauList.begin();
-                        isoTau != corrIsoTauList.end();
-                        isoTau++) {
-                unpackedCorrIsoTaus->push_back(*isoTau);
-        }
-        */
+           for(list<UCTCandidate>::iterator rlxTau = corrRlxTauList.begin();
+           rlxTau != corrRlxTauList.end();
+           rlxTau++) {
+           unpackedCorrRlxTaus->push_back(*rlxTau);
+           }
+           for(list<UCTCandidate>::iterator isoTau = corrIsoTauList.begin();
+           isoTau != corrIsoTauList.end();
+           isoTau++) {
+           unpackedCorrIsoTaus->push_back(*isoTau);
+           }
+           */
         for(list<UCTCandidate>::iterator rlxTauRegionOnly = rlxTauRegionOnlyList.begin();
                         rlxTauRegionOnly != rlxTauRegionOnlyList.end();
                         rlxTauRegionOnly++) {
@@ -438,11 +434,11 @@ void UCT2015Producer::makeSums()
                 double regionET =  regionPhysicalEt(*newRegion);     
 
                 /*
-                if(puCorrectHISums)    {
-                        regionET = std::max(regionPhysicalEt(*newRegion) - puLevelHI*regionLSB_/9., 0.);
-                }
-                */
- 
+                   if(puCorrectHISums)    {
+                   regionET = std::max(regionPhysicalEt(*newRegion) - puLevelHI*regionLSB_/9., 0.);
+                   }
+                   */
+
                 if(regionET >= regionETCutForMET){
                         sumET += regionET;
                         sumEx += (int) (((double) regionET) * cosPhi[newRegion->gctPhi()]);
@@ -584,33 +580,12 @@ void UCT2015Producer::makeJets() {
                                         neighborN_et + neighborS_et + neighborE_et + neighborW_et +
                                         neighborNE_et + neighborSW_et + neighborSE_et + neighborNW_et;
 
-                                /*std::cout<<"FOUND JET!   " <<regionET<<std::endl;
-                                  std::cout<<"\t  "<<neighborNW_et<<"  "<<neighborN_et<<"   "<<neighborNE_et<<std::endl;
-                                  std::cout<<"\t  "<<neighborW_et<<"  "<<regionET<<"   "<<neighborE_et<<std::endl;
-                                  std::cout<<"\t  "<<neighborSW_et<<"  "<<neighborS_et<<"   "<<neighborSE_et<<std::endl;
-                                  */
-
-                                /*
-                                   int jetPhi = newRegion->gctPhi() * 4 +
-                                   ( - 2 * (neighborS_et + neighborSE_et + neighborSW_et)
-                                   + 2 * (neighborN_et + neighborNE_et + neighborNW_et) ) / jetET;
-                                   if(jetPhi < 0) {
-
-                                   }
-                                   else if(jetPhi >= ((int) N_JET_PHI)) {
-                                   jetPhi -= N_JET_PHI;
-                                   }
-                                   int jetEta = newRegion->gctEta() * 4 +
-                                   ( - 2 * (neighborW_et + neighborNW_et + neighborSW_et)
-                                   + 2 * (neighborE_et + neighborNE_et + neighborSE_et) ) / jetET;
-                                   if(jetEta < 0) jetEta = 0;
-                                   if(jetEta >= ((int) N_JET_ETA)) jetEta = N_JET_ETA - 1;
-                                   */
                                 // Temporarily use the region granularity -- we will try to improve as above when code is debugged
                                 int jetPhi = newRegion->gctPhi();
                                 int jetEta = newRegion->gctEta();
 
                                 bool neighborCheck = (nNeighbors == 8);
+
                                 // On the eta edge we only expect 5 neighbors
                                 if (!neighborCheck && (jetEta == 0 || jetEta == 21) && nNeighbors == 5)
                                         neighborCheck = true;
@@ -621,6 +596,7 @@ void UCT2015Producer::makeJets() {
                                         assert(false);
                                 }
                                 UCTCandidate theJet(jetET, convertRegionEta(jetEta), convertRegionPhi(jetPhi));
+
                                 theJet.setInt("rgnEta", jetEta);
                                 theJet.setInt("rgnPhi", jetPhi);
                                 theJet.setInt("rctEta",  newRegion->rctEta());
@@ -669,8 +645,6 @@ UCT2015Producer::correctJets(const list<UCTCandidate>& jets, bool isJet) {
                 double jpt = jetET*alpha+gamma;
                 unsigned int corjetET =(int) jpt;
 
-//                cout<<"JET :"<<jetET<<"    "<<jet->getInt("rgnEta")<<"    "<<alpha<<"   "<<gamma<<"    -->"<<jpt<<endl;
-
                 UCTCandidate newJet(corjetET, convertRegionEta(jet->getInt("rgnEta")), convertRegionPhi(jet->getInt("rgnPhi")));
                 newJet.setFloat("uncorrectedPt", jetET);
                 newJet.setInt("rgnEta", jet->getInt("rgnEta"));
@@ -680,19 +654,19 @@ UCT2015Producer::correctJets(const list<UCTCandidate>& jets, bool isJet) {
                 newJet.setInt("rank", corjetET);
 
                 if(isJet){
-                newJet.setInt("jetseed_et", jet->getInt("jetseed_et"));
-                newJet.setInt("neighborNW_et", jet->getInt("neighborNW_et"));
-                newJet.setInt("neighborN_et", jet->getInt("neighborN_et"));
-                newJet.setInt("neighborNE_et", jet->getInt("neighborNE_et"));
-                newJet.setInt("neighborW_et", jet->getInt("neighborW_et"));
-                newJet.setInt("neighborE_et", jet->getInt("neighborE_et"));
-                newJet.setInt("neighborSW_et", jet->getInt("neighborSW_et"));
-                newJet.setInt("neighborS_et", jet->getInt("neighborS_et"));
-                newJet.setInt("neighborSE_et", jet->getInt("neighborSE_et"));
+                        newJet.setInt("jetseed_et", jet->getInt("jetseed_et"));
+                        newJet.setInt("neighborNW_et", jet->getInt("neighborNW_et"));
+                        newJet.setInt("neighborN_et", jet->getInt("neighborN_et"));
+                        newJet.setInt("neighborNE_et", jet->getInt("neighborNE_et"));
+                        newJet.setInt("neighborW_et", jet->getInt("neighborW_et"));
+                        newJet.setInt("neighborE_et", jet->getInt("neighborE_et"));
+                        newJet.setInt("neighborSW_et", jet->getInt("neighborSW_et"));
+                        newJet.setInt("neighborS_et", jet->getInt("neighborS_et"));
+                        newJet.setInt("neighborSE_et", jet->getInt("neighborSE_et"));
                 }
-                                newJet.setFloat("puLevelPUM0",puLevelPUM0);
-                                newJet.setFloat("puLevelHI", puLevelHI);
-                                newJet.setFloat("puLevelHIUIC", puLevelHIUIC);
+                newJet.setFloat("puLevelPUM0",puLevelPUM0);
+                newJet.setFloat("puLevelHI", puLevelHI);
+                newJet.setFloat("puLevelHIUIC", puLevelHIUIC);
 
                 corrlist.push_back(newJet);
         }
@@ -705,6 +679,33 @@ UCT2015Producer::correctJets(const list<UCTCandidate>& jets, bool isJet) {
 
 // Given a region at iphi/ieta, find the highest region in the surrounding
 // regions.
+
+double UCT2015Producer::findEnergy12x12(int ieta, int iphi, const L1CaloRegionCollection& regions){
+
+        unsigned int neighborsFound = 0;
+        double energy=0;
+
+        for(L1CaloRegionCollection::const_iterator region = regions.begin();
+                        region != regions.end(); region++) {
+                int regionPhi = region->gctPhi();
+                int regionEta = region->gctEta();
+                unsigned int deltaPhi = std::abs(deltaPhiWrapAtN(18, iphi, regionPhi));
+                unsigned int deltaEta = std::abs(ieta - regionEta);
+                if (deltaPhi < 2 && deltaEta < 2) {
+                        double regionET = regionPhysicalEt(*region);
+                        energy+=regionET;
+                        neighborsFound++;
+                        if (neighborsFound == 9) { break;}
+                }
+
+        }
+
+        return energy;
+}
+
+
+
+
 void UCT2015Producer::findAnnulusInfo(int ieta, int iphi,
                 const L1CaloRegionCollection& regions,
                 double* associatedSecondRegionEt,
@@ -808,17 +809,13 @@ void UCT2015Producer::makeEGTaus() {
                                                         &associatedSecondRegionEt, &associatedThirdRegionEt, &mipsInAnnulus, &egFlagsInAnnulus,
                                                         &mipInSecondRegion);
 
+                                        double energy12x12=findEnergy12x12(egtCand->regionId().ieta(), egtCand->regionId().iphi(),*newRegions);
+
+
                                         UCTCandidate egtauCand(
                                                         et,
                                                         convertRegionEta(egtCand->regionId().ieta()),
                                                         convertRegionPhi(egtCand->regionId().iphi()));
-
-                                        /*            UCTCandidate tauCand(
-                                                      regionEt,
-                                                      convertRegionEta(egtCand->regionId().ieta()),
-                                                      convertRegionPhi(egtCand->regionId().iphi()));
-                                                      */
-
 
                                         // Add extra information to the candidate
                                         egtauCand.setInt("rgnEta", egtCand->regionId().ieta());
@@ -832,37 +829,36 @@ void UCT2015Producer::makeEGTaus() {
                                         egtauCand.setInt("associatedSecondRegionMIP", mipInSecondRegion);
                                         egtauCand.setFloat("puLevelHI", puLevelHI);
                                         egtauCand.setFloat("puLevelHIUIC", puLevelHIUIC);
-                                egtauCand.setFloat("puLevelPUM0",puLevelPUM0);
+                                        egtauCand.setFloat("puLevelPUM0",puLevelPUM0);
                                         egtauCand.setInt("ellIsolation", egtCand->isolated());
                                         egtauCand.setInt("tauVeto", region->tauVeto());
                                         egtauCand.setInt("mipBit", region->mip());
                                         egtauCand.setInt("isEle", isEle);
-
-                                        /*
-                                           tauCand.setInt("rgnEta", egtCand->regionId().ieta());
-                                           tauCand.setInt("rgnPhi", egtCand->regionId().iphi());
-                                           tauCand.setInt("rctEta", egtCand->regionId().rctEta());
-                                           tauCand.setInt("rctPhi", egtCand->regionId().rctPhi());
-                                           tauCand.setFloat("associatedRegionEt", regionEt);
-                                           tauCand.setFloat("associatedJetPt", -3);
-                                           tauCand.setFloat("associatedSecondRegionEt", associatedSecondRegionEt);
-                                           tauCand.setInt("associatedSecondRegionMIP", mipInSecondRegion);
-                                           tauCand.setInt("tauVeto", region->tauVeto());
-                                           tauCand.setInt("mipBit", region->mip());
-                                           */
-
+                                        egtauCand.setFloat("energy12x12", energy12x12);
 
                                         // A 2x1 and 1x2 cluster above egtSeed is always in tau list
                                         rlxTauList.push_back(egtauCand);
 
-                                        // Note tauVeto now refers to emActivity pattern veto;
-                                        // Good patterns are from EG candidates
                                         if (isEle){
                                                 rlxEGList.push_back(egtauCand);
                                         }
+                                        double jetIsolationEG = energy12x12 - et;        // Jet isolation
+                                        double relativeJetIsolationEG = jetIsolationEG / et;
+
+                                        bool isolatedEG=false;
+                                        if(et<63 && relativeJetIsolationEG < relativeJetIsolationCut)  isolatedEG=true;; 
+                                        if (et>=63) isolatedEG=true;;
+
+                                        if(isEle){
+                                                rlxEGList.back().setInt("isIsolated",isolatedEG);
+                                                if(isolatedEG){
+                                                        isoEGList.push_back(rlxEGList.back());
+                                                }
+                                        }
+
+
 
                                         // Look for overlapping jet and require that isolation be passed
-//                                          for(list<UCTCandidate>::iterator jet = corrJetList.begin(); jet != corrJetList.end(); jet++) { 
                                         bool MATCHEDJETFOUND_=false;        
                                         for(list<UCTCandidate>::iterator jet = jetList.begin(); jet != jetList.end(); jet++) {
 
@@ -881,38 +877,14 @@ void UCT2015Producer::makeEGTaus() {
                                                                 rlxEGList.back().setInt("isHighPtEle",isHighPtEle);
                                                         }
 
-
-//                                                        cout<<"Electron? "<<et<<"   "<<jet->pt()<<"   "<<egtCand->regionId().ieta()<<endl;
-
-                                                        double jetIsolation = jet->pt() - regionEt;        // Jet isolation
-                                                        double relativeJetIsolation = jetIsolation / regionEt;
-                                                        // A 2x1 and 1x2 cluster above egtSeed passing relative isolation will be in tau list
-                                                        if(relativeJetIsolation < relativeTauIsolationCut || regionEt > switchOffTauIso){
-                                                                isoTauList.push_back(rlxTauList.back());
-                                                        }
-                                                        //double jetIsolationRegionEG = jet->pt()-regionEt;   // Core isolation (could go less than zero)
-                                                        //double relativeJetIsolationRegionEG = jetIsolationRegionEG / regionEt;
-                                                        double jetIsolationEG = jet->pt() - et;        // Jet isolation
-                                                        double relativeJetIsolationEG = jetIsolationEG / et;
-
-                                                        bool isolatedEG=false;
-                                                        if(et<63 && relativeJetIsolationEG < relativeJetIsolationCut)  isolatedEG=true;; 
-                                                        if (et>=63) isolatedEG=true;;
-                                                        
-                                                        if(isEle){
-                                                                rlxEGList.back().setInt("isIsolated",isolatedEG);
-                                                                if(isolatedEG){
-                                                                        isoEGList.push_back(rlxEGList.back());
-                                                                }
-                                                        }
                                                         break;
                                                 }
                                         }
                                         if(!MATCHEDJETFOUND_ && isEle) {
                                                 rlxEGList.back().setFloat("associatedJetPt",-777);
                                                 rlxEGList.back().setInt("isHighPtEle",true);        
-                                                rlxEGList.back().setInt("isIsolated",true);
-                                                isoEGList.push_back(rlxEGList.back());
+                                                //                                                rlxEGList.back().setInt("isIsolated",true);
+                                                //                                                isoEGList.push_back(rlxEGList.back());
                                         }
                                         break;
                                 }
@@ -977,11 +949,11 @@ void UCT2015Producer::makeTaus() {
 
                                 rlxTauRegionOnlyList.push_back(tauCand);
 
-                        
+
                                 bool MATCHEDJETFOUND_=false;
                                 // Look for overlapping jet and require that isolation be passed
                                 for(list<UCTCandidate>::iterator jet = jetList.begin(); jet != jetList.end(); jet++) {
-//                                  for(list<UCTCandidate>::iterator jet = corrJetList.begin(); jet != corrJetList.end(); jet++) {      
+                                        //                                  for(list<UCTCandidate>::iterator jet = corrJetList.begin(); jet != corrJetList.end(); jet++) {      
                                         if((int)region->gctPhi() == jet->getInt("rgnPhi") &&
                                                         (int)region->gctEta() == jet->getInt("rgnEta")) {
                                                 MATCHEDJETFOUND_=true;
@@ -999,17 +971,17 @@ void UCT2015Producer::makeTaus() {
                                 if(!MATCHEDJETFOUND_){ 
                                         rlxTauRegionOnlyList.back().setFloat("associatedJetPt", -777);
                                         isoTauRegionOnlyList.push_back(rlxTauRegionOnlyList.back());
-                                 }       
+                                }       
+                                }
+                                rlxTauRegionOnlyList.sort();
+                                isoTauRegionOnlyList.sort();
+                                rlxTauRegionOnlyList.reverse();
+                                isoTauRegionOnlyList.reverse();
+
+
+
         }
-        rlxTauRegionOnlyList.sort();
-        isoTauRegionOnlyList.sort();
-        rlxTauRegionOnlyList.reverse();
-        isoTauRegionOnlyList.reverse();
 
 
-
-}
-
-
-//define this as a plug-in
-DEFINE_FWK_MODULE(UCT2015Producer);
+        //define this as a plug-in
+        DEFINE_FWK_MODULE(UCT2015Producer);
