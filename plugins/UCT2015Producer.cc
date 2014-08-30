@@ -39,122 +39,124 @@ using namespace edm;
 
 
 class UCT2015Producer : public edm::EDProducer {
-  public:
+public:
 
-    static const unsigned N_JET_PHI;
-    static const unsigned N_JET_ETA;
+  static const unsigned N_JET_PHI;
+  static const unsigned N_JET_ETA;
 
-    // Concrete collection of L1Gobjects (with extra tuning information)
-    typedef vector<UCTCandidate> UCTCandidateCollection;
-    typedef std::auto_ptr<UCTCandidateCollection> UCTCandidateCollectionPtr;
+  // Concrete collection of L1Gobjects (with extra tuning information)
+  typedef vector<UCTCandidate> UCTCandidateCollection;
+  typedef std::auto_ptr<UCTCandidateCollection> UCTCandidateCollectionPtr;
 
-    explicit UCT2015Producer(const edm::ParameterSet&);
+  explicit UCT2015Producer(const edm::ParameterSet&);
 
-  private:
-    virtual void produce(edm::Event&, const edm::EventSetup&);
+private:
+  virtual void produce(edm::Event&, const edm::EventSetup&);
 
-    double egPhysicalEt(const L1CaloEmCand& cand) const {
-      return egLSB_*cand.rank();
-    }
+  double egPhysicalEt(const L1CaloEmCand& cand) const {
+    return egLSB_*cand.rank();
+  }
 
-    double regionPhysicalEt(const L1CaloRegion& cand) const {
-      return std::max(0.,regionLSB_*cand.et());
-    }
+  double regionPhysicalEt(const L1CaloRegion& cand) const {
+    return std::max(0.,regionLSB_*cand.et());
+  }
 
-    // Find information about observables in the annulus.  We define the annulus
-    // as all regions around the central region, with the exception of the second
-    // highest in ET, as this could be sharing the 2x1.
-    // MIPS in annulus refers to number of regions in the annulus which have
-    // their MIP bit set.
-    // egFlags is the number where (!tauVeto && !mip)
-    void findAnnulusInfo(int ieta, int iphi,
-        const L1CaloRegionCollection& regions,
-        double* associatedSecondRegionEt,
-        double* associatedThirdRegionEt,
-        unsigned int* mipsInAnnulus,
-        unsigned int* egFlagsInAnnulus,
-        unsigned int* mipInSecondRegion) const;
+  // Find information about observables in the annulus.  We define the annulus
+  // as all regions around the central region, with the exception of the second
+  // highest in ET, as this could be sharing the 2x1.
+  // MIPS in annulus refers to number of regions in the annulus which have
+  // their MIP bit set.
+  // egFlags is the number where (!tauVeto && !mip)
+  void findAnnulusInfo(int ieta, int iphi,
+		       const L1CaloRegionCollection& regions,
+		       double* associatedSecondRegionEt,
+		       double* associatedThirdRegionEt,
+		       unsigned int* mipsInAnnulus,
+		       unsigned int* egFlagsInAnnulus,
+		       unsigned int* mipInSecondRegion) const;
 
 
-    // 12x12 energy, not jet
-    double findEnergy12x12(int ieta, int iphi, const L1CaloRegionCollection& regions);
+  // 12x12 energy, not jet
+  double findEnergy12x12(int ieta, int iphi, const L1CaloRegionCollection& regions);
+  
+  // Helper methods
 
-    // Helper methods
+  void puSubtraction();
+  void puMultSubtraction();
 
-    void puSubtraction();
-    void puMultSubtraction();
+  void makeSums();
+  void makeJets();
+  void makeEGTaus();
+  void makeTaus();
 
-    void makeSums();
-    void makeJets();
-    void makeEGTaus();
-    void makeTaus();
+  list<UCTCandidate> correctJets(const list<UCTCandidate>&, bool isJet);
 
-    list<UCTCandidate> correctJets(const list<UCTCandidate>&, bool isJet);
+  // ----------member data ---------------------------
+  bool puCorrectHI;
+  bool applyJetCalibration;
+  bool puMultCorrect;
+  //bool puCorrectHISums;
+  bool useUICrho; // which PU denstity to use for energy correction determination
+  bool useHI; // do HI-style background subtraction
 
-    // ----------member data ---------------------------
-    bool puCorrectHI;
-    bool applyJetCalibration;
-    bool puMultCorrect;
-    //bool puCorrectHISums;
-    bool useUICrho; // which PU denstity to use for energy correction determination
-    bool useHI; // do HI-style background subtraction
+  unsigned int puETMax;
+  unsigned int puLevelHI;
+  unsigned int puLevelPUM0;
+  //double puLevelHIUIC; // puLevelHI divided by puCount*Area, not multiply by 9.0
+  unsigned int  puLevelHIUIC; // puLevelHI divided by puCount*Area, not multiply by 9.0
+  vector<int> puLevelHIHI;
 
-    unsigned int puETMax;
-    unsigned int puLevelHI;
-    unsigned int puLevelPUM0;
-    //double puLevelHIUIC; // puLevelHI divided by puCount*Area, not multiply by 9.0
-    unsigned int  puLevelHIUIC; // puLevelHI divided by puCount*Area, not multiply by 9.0
-    vector<int> puLevelHIHI;
+  unsigned int sumET;
+  int sumEx;
+  int sumEy;
+  unsigned int MET;
 
-    unsigned int sumET;
-    int sumEx;
-    int sumEy;
-    unsigned int MET;
+  unsigned int regionETCutForHT;
+  unsigned int regionETCutForNeighbor;
+  unsigned int regionETCutForMET;
 
-    unsigned int regionETCutForHT;
-    unsigned int regionETCutForMET;
-    unsigned int minGctEtaForSums;
-    unsigned int maxGctEtaForSums;
-    unsigned int sumHT;
-    int sumHx;
-    int sumHy;
-    unsigned int MHT;
+  unsigned int minGctEtaForSums;
+  unsigned int maxGctEtaForSums;
+  unsigned int sumHT;
+  int sumHx;
+  int sumHy;
+  unsigned int MHT;
 
-    unsigned int sumExtraET;
-    unsigned int extraMET;
-    unsigned int sumExtraHT;
-    unsigned int extraMHT;
+  unsigned int sumExtraET;
+  unsigned int extraMET;
+  unsigned int sumExtraHT;
+  unsigned int extraMHT;
 
-    UCTCandidate METObject;
-    UCTCandidate MHTObject;
-    UCTCandidate SETObject;
-    UCTCandidate SHTObject;
+  UCTCandidate METObject;
+  UCTCandidate MHTObject;
+  UCTCandidate SETObject;
+  UCTCandidate SHTObject;
 
-    unsigned int jetSeed;
-    list<UCTCandidate> jetList, corrJetList;
+  unsigned int jetSeed;
+  list<UCTCandidate> jetList, corrJetList;
 
-    unsigned int egtSeed;
-    unsigned int tauSeed;
+  unsigned int egtSeed;
+  unsigned int tauSeed;
 
-    double relativeTauIsolationCut;
-    double relativeJetIsolationCut;
-    double switchOffTauIso;
-    list<UCTCandidate> rlxTauList, corrRlxTauList;
-    list<UCTCandidate> rlxEGList;
-    list<UCTCandidate> isoTauList, corrIsoTauList;
-    list<UCTCandidate> isoEGList;
-    list<UCTCandidate> rlxTauRegionOnlyList, isoTauRegionOnlyList;
+  double relativeTauIsolationCut;
+  double relativeJetIsolationCut;
+  double switchOffTauIso;
+  list<UCTCandidate> rlxTauList, corrRlxTauList;
+  list<UCTCandidate> rlxEGList;
+  list<UCTCandidate> isoTauList, corrIsoTauList;
+  list<UCTCandidate> isoEGList;
+  list<UCTCandidate> rlxTauRegionOnlyList, isoTauRegionOnlyList;
 
-    Handle<L1CaloRegionCollection> newRegions;
-    Handle<L1CaloEmCollection> newEMCands;
+  Handle<L1CaloRegionCollection> newRegions;
+  Handle<L1CaloEmCollection> newEMCands;
 
-    vector<double> sinPhi;
-    vector<double> cosPhi;
+  vector<double> sinPhi;
+  vector<double> cosPhi;
 
-    double egLSB_;
-    double regionLSB_;
+  double egLSB_;
+  double regionLSB_;
 
-    vector<double> m_jetSF;
+  vector<double> m_jetSF;
 
 };
 
@@ -172,6 +174,7 @@ UCT2015Producer::UCT2015Producer(const edm::ParameterSet& iConfig) :
   useHI(iConfig.getParameter<bool>("useHI")),
   puETMax(iConfig.getParameter<unsigned int>("puETMax")),
   regionETCutForHT(iConfig.getParameter<unsigned int>("regionETCutForHT")),
+  regionETCutForNeighbor(iConfig.getParameter<unsigned int>("regionETCutForNeighbor")),
   regionETCutForMET(iConfig.getParameter<unsigned int>("regionETCutForMET")),
   minGctEtaForSums(iConfig.getParameter<unsigned int>("minGctEtaForSums")),
   maxGctEtaForSums(iConfig.getParameter<unsigned int>("maxGctEtaForSums")),
@@ -225,11 +228,11 @@ UCT2015Producer::UCT2015Producer(const edm::ParameterSet& iConfig) :
 // The "collection" contains only 1 object.
 UCT2015Producer::UCTCandidateCollectionPtr collectionize(const UCTCandidate& obj) {
   return UCT2015Producer::UCTCandidateCollectionPtr(
-      new UCT2015Producer::UCTCandidateCollection(1, obj));
+						    new UCT2015Producer::UCTCandidateCollection(1, obj));
 }
 
 // ------------ method called for each event  ------------
-  void
+void
 UCT2015Producer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
 
@@ -247,10 +250,18 @@ UCT2015Producer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
   if(puCorrectHI) puSubtraction();
 
   makeSums();
+  makeEGTaus();
+  // make sums and jets 0
+  makeSums();
   makeJets();
+  //corrected Jet and Tau collections
   corrJetList = correctJets(jetList,true);
+  // electrons and taus 
   makeEGTaus();
   makeTaus();
+  // nobody uses these
+  //corrRlxTauList = correctJets(rlxTauList,false);
+  //corrIsoTauList = correctJets(isoTauList,false);
 
 
   UCTCandidateCollectionPtr unpackedJets(new UCTCandidateCollection);
@@ -286,17 +297,17 @@ UCT2015Producer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
     unpackedCorrJets->push_back(*jet);
   }
   /*
-     for(list<UCTCandidate>::iterator rlxTau = corrRlxTauList.begin();
-     rlxTau != corrRlxTauList.end();
-     rlxTau++) {
-     unpackedCorrRlxTaus->push_back(*rlxTau);
-     }
-     for(list<UCTCandidate>::iterator isoTau = corrIsoTauList.begin();
-     isoTau != corrIsoTauList.end();
-     isoTau++) {
-     unpackedCorrIsoTaus->push_back(*isoTau);
-     }
-     */
+    for(list<UCTCandidate>::iterator rlxTau = corrRlxTauList.begin();
+    rlxTau != corrRlxTauList.end();
+    rlxTau++) {
+    unpackedCorrRlxTaus->push_back(*rlxTau);
+    }
+    for(list<UCTCandidate>::iterator isoTau = corrIsoTauList.begin();
+    isoTau != corrIsoTauList.end();
+    isoTau++) {
+    unpackedCorrIsoTaus->push_back(*isoTau);
+    }
+  */
   for(list<UCTCandidate>::iterator rlxTauRegionOnly = rlxTauRegionOnlyList.begin();
       rlxTauRegionOnly != rlxTauRegionOnlyList.end();
       rlxTauRegionOnly++) {
@@ -354,22 +365,22 @@ UCT2015Producer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
   newRegions->begin();
   newRegion != newRegions->end(); newRegion++){
   double regionET =  regionPhysicalEt(*newRegion);
-// cout << "regionET: " << regionET <<endl; 
-if (regionET > 0) {puMult++;}
-}
+  // cout << "regionET: " << regionET <<endl; 
+  if (regionET > 0) {puMult++;}
+  }
 
-for(L1CaloRegionCollection::const_iterator newRegion =
-newRegions->begin();
-newRegion != newRegions->end(); newRegion++){
-double regionET =  regionPhysicalEt(*newRegion);
-// cout << "regionET: " << regionET <<endl; 
-//the divide by regionLSB to get back to gct Digis
-double regionEtCorr = (pumcorr(regionET, newRegion->gctEta(),puMult))/regionLSB_;
-//		newRegion->et()=region;    
-}
+  for(L1CaloRegionCollection::const_iterator newRegion =
+  newRegions->begin();
+  newRegion != newRegions->end(); newRegion++){
+  double regionET =  regionPhysicalEt(*newRegion);
+  // cout << "regionET: " << regionET <<endl; 
+  //the divide by regionLSB to get back to gct Digis
+  double regionEtCorr = (pumcorr(regionET, newRegion->gctEta(),puMult))/regionLSB_;
+  //		newRegion->et()=region;    
+  }
 
 
-}
+  }
 */
 
 void UCT2015Producer::puSubtraction()
@@ -381,16 +392,16 @@ void UCT2015Producer::puSubtraction()
 
   int etaCount[L1CaloRegionDetId::N_ETA];
   for(unsigned i = 0; i < L1CaloRegionDetId::N_ETA; ++i)
-  {
-    puLevelHIHI[i] = 0;
-    r_puLevelHIHI[i] = 0.0;
-    etaCount[i] = 0;
-  }
+    {
+      puLevelHIHI[i] = 0;
+      r_puLevelHIHI[i] = 0.0;
+      etaCount[i] = 0;
+    }
 
   int puCount = 0;
   double Rarea=0.0;
   for(L1CaloRegionCollection::const_iterator newRegion =
-      newRegions->begin();
+	newRegions->begin();
       newRegion != newRegions->end(); newRegion++){
     if(regionPhysicalEt(*newRegion) <= puETMax) {
       puLevelHI += newRegion->et(); puCount++;
@@ -410,9 +421,9 @@ void UCT2015Producer::puSubtraction()
   if (r_puLevelHIUIC > 0.) puLevelHIUIC = floor (r_puLevelHIUIC + 0.5);
 
   for(unsigned i = 0; i < L1CaloRegionDetId::N_ETA; ++i)
-  {
-    puLevelHIHI[i] = floor(r_puLevelHIHI[i]/etaCount[i] + 0.5);
-  }
+    {
+      puLevelHIHI[i] = floor(r_puLevelHIHI[i]/etaCount[i] + 0.5);
+    }
 }
 
 void UCT2015Producer::makeSums()
@@ -434,11 +445,11 @@ void UCT2015Producer::makeSums()
     double regionET =  regionPhysicalEt(*newRegion);     
 
     /*
-       if(puCorrectHISums)    {
-       regionET = std::max(regionPhysicalEt(*newRegion) - puLevelHI*regionLSB_/9., 0.);
-       }
-       */
-
+      if(puCorrectHISums)    {
+      regionET = std::max(regionPhysicalEt(*newRegion) - puLevelHI*regionLSB_/9., 0.);
+      }
+    */
+ 
     if(regionET >= regionETCutForMET){
       sumET += regionET;
       sumEx += (int) (((double) regionET) * cosPhi[newRegion->gctPhi()]);
@@ -448,6 +459,26 @@ void UCT2015Producer::makeSums()
       sumHT += regionET;
       sumHx += (int) (((double) regionET) * cosPhi[newRegion->gctPhi()]);
       sumHy += (int) (((double) regionET) * sinPhi[newRegion->gctPhi()]);
+    }
+    else if(regionET >= regionETCutForNeighbor) {
+      bool goodNeighbor = false;
+      for(L1CaloRegionCollection::const_iterator neighbor = newRegions->begin();
+	  neighbor != newRegions->end(); neighbor++) {
+	if((deltaGctPhi(*newRegion, *neighbor) == 1 && (newRegion->gctEta() == neighbor->gctEta())) ||
+	   (deltaGctPhi(*newRegion, *neighbor) == -1 && (newRegion->gctEta() == neighbor->gctEta())) ||
+	   (deltaGctPhi(*newRegion, *neighbor) == 0 && (newRegion->gctEta() - neighbor->gctEta()) == 1) ||
+	   (deltaGctPhi(*newRegion, *neighbor) == 0 && (neighbor->gctEta() - newRegion->gctEta()) == 1)) {
+	  double neighborET = regionPhysicalEt(*neighbor);
+	  if(neighborET >= regionETCutForHT) {
+	    goodNeighbor = true;
+	  }
+	}
+      }
+      if(goodNeighbor ) {
+	sumHT += regionET;
+	sumHx += (int) (((double) regionET) * cosPhi[newRegion->gctPhi()]);
+	sumHy += (int) (((double) regionET) * sinPhi[newRegion->gctPhi()]);
+      }
     }
   }
   MET = ((unsigned int) sqrt(sumEx * sumEx + sumEy * sumEy));
@@ -480,7 +511,7 @@ void UCT2015Producer::makeJets() {
     double regionET = regionPhysicalEt(*newRegion);
     if(puCorrectHI && useHI)
       regionET = std::max(0.,regionET -
-          (puLevelHIHI[newRegion->gctEta()]*regionLSB_));
+			  (puLevelHIHI[newRegion->gctEta()]*regionLSB_));
     if((regionET > jetSeed) || (puCorrectHI && useHI)) {
       double neighborN_et = 0;
       double neighborS_et = 0;
@@ -492,135 +523,155 @@ void UCT2015Producer::makeJets() {
       double neighborSE_et = 0;
       unsigned int nNeighbors = 0;
       for(L1CaloRegionCollection::const_iterator neighbor = newRegions->begin();
-          neighbor != newRegions->end(); neighbor++) {
-        double neighborET = regionPhysicalEt(*neighbor);
-        if(deltaGctPhi(*newRegion, *neighbor) == 1 &&
-            (newRegion->gctEta()    ) == neighbor->gctEta()) {
-          neighborN_et = neighborET;
-          if(puCorrectHI && useHI)
-            neighborN_et = std::max(0.,neighborET -
-                (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
-          nNeighbors++; 
-          //	std::cout<<"here neighborsN"<<endl;
-          continue;
-        }
-        else if(deltaGctPhi(*newRegion, *neighbor) == -1 &&
-            (newRegion->gctEta()    ) == neighbor->gctEta()) {
-          neighborS_et = neighborET;
-          if(puCorrectHI && useHI)
-            neighborS_et = std::max(0.,neighborET -
-                (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
-          nNeighbors++;
-          continue;
-        }
-        else if(deltaGctPhi(*newRegion, *neighbor) == 0 &&
-            (newRegion->gctEta() + 1) == neighbor->gctEta()) {
-          neighborE_et = neighborET;
-          if(puCorrectHI && useHI)
-            neighborE_et = std::max(0.,neighborET -
-                (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
-          nNeighbors++;
-          continue;
-        }
-        else if(deltaGctPhi(*newRegion, *neighbor) == 0 &&
-            (newRegion->gctEta() - 1) == neighbor->gctEta()) {
-          neighborW_et = neighborET;
-          if(puCorrectHI && useHI)
-            neighborW_et = std::max(0.,neighborET -
-                (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
-          nNeighbors++;
-          continue;
-        }
-        else if(deltaGctPhi(*newRegion, *neighbor) == 1 &&
-            (newRegion->gctEta() + 1) == neighbor->gctEta()) {
-          neighborNE_et = neighborET;
-          if(puCorrectHI && useHI)
-            neighborNE_et = std::max(0.,neighborET -
-                (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
-          nNeighbors++;
-          continue;
-        }
-        else if(deltaGctPhi(*newRegion, *neighbor) == -1 &&
-            (newRegion->gctEta() - 1) == neighbor->gctEta()) {
-          neighborSW_et = neighborET;
-          if(puCorrectHI && useHI)
-            neighborSW_et = std::max(0.,neighborET -
-                (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
-          nNeighbors++;
-          continue;
-        }
-        else if(deltaGctPhi(*newRegion, *neighbor) == 1 &&
-            (newRegion->gctEta() - 1) == neighbor->gctEta()) {
-          neighborNW_et = neighborET;
-          if(puCorrectHI && useHI)
-            neighborNW_et = std::max(0.,neighborET -
-                (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
-          nNeighbors++;
-          continue;
-        }
-        else if(deltaGctPhi(*newRegion, *neighbor) == -1 &&
-            (newRegion->gctEta() + 1) == neighbor->gctEta()) {
-          neighborSE_et = neighborET;
-          if(puCorrectHI && useHI)
-            neighborSE_et = std::max(0.,neighborET -
-                (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
-          nNeighbors++;
-          continue;
-        }
+	  neighbor != newRegions->end(); neighbor++) {
+	double neighborET = regionPhysicalEt(*neighbor);
+	if(deltaGctPhi(*newRegion, *neighbor) == 1 &&
+	   (newRegion->gctEta()    ) == neighbor->gctEta()) {
+	  neighborN_et = neighborET;
+	  if(puCorrectHI && useHI)
+	    neighborN_et = std::max(0.,neighborET -
+				    (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
+	  nNeighbors++; 
+	  //	std::cout<<"here neighborsN"<<endl;
+	  continue;
+	}
+	else if(deltaGctPhi(*newRegion, *neighbor) == -1 &&
+		(newRegion->gctEta()    ) == neighbor->gctEta()) {
+	  neighborS_et = neighborET;
+	  if(puCorrectHI && useHI)
+	    neighborS_et = std::max(0.,neighborET -
+				    (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
+	  nNeighbors++;
+	  continue;
+	}
+	else if(deltaGctPhi(*newRegion, *neighbor) == 0 &&
+		(newRegion->gctEta() + 1) == neighbor->gctEta()) {
+	  neighborE_et = neighborET;
+	  if(puCorrectHI && useHI)
+	    neighborE_et = std::max(0.,neighborET -
+				    (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
+	  nNeighbors++;
+	  continue;
+	}
+	else if(deltaGctPhi(*newRegion, *neighbor) == 0 &&
+		(newRegion->gctEta() - 1) == neighbor->gctEta()) {
+	  neighborW_et = neighborET;
+	  if(puCorrectHI && useHI)
+	    neighborW_et = std::max(0.,neighborET -
+				    (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
+	  nNeighbors++;
+	  continue;
+	}
+	else if(deltaGctPhi(*newRegion, *neighbor) == 1 &&
+		(newRegion->gctEta() + 1) == neighbor->gctEta()) {
+	  neighborNE_et = neighborET;
+	  if(puCorrectHI && useHI)
+	    neighborNE_et = std::max(0.,neighborET -
+				     (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
+	  nNeighbors++;
+	  continue;
+	}
+	else if(deltaGctPhi(*newRegion, *neighbor) == -1 &&
+		(newRegion->gctEta() - 1) == neighbor->gctEta()) {
+	  neighborSW_et = neighborET;
+	  if(puCorrectHI && useHI)
+	    neighborSW_et = std::max(0.,neighborET -
+				     (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
+	  nNeighbors++;
+	  continue;
+	}
+	else if(deltaGctPhi(*newRegion, *neighbor) == 1 &&
+		(newRegion->gctEta() - 1) == neighbor->gctEta()) {
+	  neighborNW_et = neighborET;
+	  if(puCorrectHI && useHI)
+	    neighborNW_et = std::max(0.,neighborET -
+				     (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
+	  nNeighbors++;
+	  continue;
+	}
+	else if(deltaGctPhi(*newRegion, *neighbor) == -1 &&
+		(newRegion->gctEta() + 1) == neighbor->gctEta()) {
+	  neighborSE_et = neighborET;
+	  if(puCorrectHI && useHI)
+	    neighborSE_et = std::max(0.,neighborET -
+				     (puLevelHIHI[neighbor->gctEta()]*regionLSB_));
+	  nNeighbors++;
+	  continue;
+	}
       }
       if(regionET > neighborN_et &&
-          regionET > neighborNW_et &&
-          regionET > neighborW_et &&
-          regionET > neighborSW_et &&
-          regionET >= neighborNE_et &&
-          regionET >= neighborE_et &&
-          regionET >= neighborSE_et &&
-          regionET >= neighborS_et) {
-        unsigned int jetET = regionET +
-          neighborN_et + neighborS_et + neighborE_et + neighborW_et +
-          neighborNE_et + neighborSW_et + neighborSE_et + neighborNW_et;
+	 regionET > neighborNW_et &&
+	 regionET > neighborW_et &&
+	 regionET > neighborSW_et &&
+	 regionET >= neighborNE_et &&
+	 regionET >= neighborE_et &&
+	 regionET >= neighborSE_et &&
+	 regionET >= neighborS_et) {
+	unsigned int jetET = regionET +
+	  neighborN_et + neighborS_et + neighborE_et + neighborW_et +
+	  neighborNE_et + neighborSW_et + neighborSE_et + neighborNW_et;
 
-        // Temporarily use the region granularity -- we will try to improve as above when code is debugged
-        int jetPhi = newRegion->gctPhi();
-        int jetEta = newRegion->gctEta();
+	/*std::cout<<"FOUND JET!   " <<regionET<<std::endl;
+	  std::cout<<"\t  "<<neighborNW_et<<"  "<<neighborN_et<<"   "<<neighborNE_et<<std::endl;
+	  std::cout<<"\t  "<<neighborW_et<<"  "<<regionET<<"   "<<neighborE_et<<std::endl;
+	  std::cout<<"\t  "<<neighborSW_et<<"  "<<neighborS_et<<"   "<<neighborSE_et<<std::endl;
+	*/
 
-        bool neighborCheck = (nNeighbors == 8);
+	/*
+	  int jetPhi = newRegion->gctPhi() * 4 +
+	  ( - 2 * (neighborS_et + neighborSE_et + neighborSW_et)
+	  + 2 * (neighborN_et + neighborNE_et + neighborNW_et) ) / jetET;
+	  if(jetPhi < 0) {
 
-        // On the eta edge we only expect 5 neighbors
-        if (!neighborCheck && (jetEta == 0 || jetEta == 21) && nNeighbors == 5)
-          neighborCheck = true;
+	  }
+	  else if(jetPhi >= ((int) N_JET_PHI)) {
+	  jetPhi -= N_JET_PHI;
+	  }
+	  int jetEta = newRegion->gctEta() * 4 +
+	  ( - 2 * (neighborW_et + neighborNW_et + neighborSW_et)
+	  + 2 * (neighborE_et + neighborNE_et + neighborSE_et) ) / jetET;
+	  if(jetEta < 0) jetEta = 0;
+	  if(jetEta >= ((int) N_JET_ETA)) jetEta = N_JET_ETA - 1;
+	*/
+	// Temporarily use the region granularity -- we will try to improve as above when code is debugged
+	int jetPhi = newRegion->gctPhi();
+	int jetEta = newRegion->gctEta();
 
-        if (!neighborCheck) {
-          std::cout << "phi: " << jetPhi << " eta: " << jetEta << " n: " << nNeighbors << std::endl;
-          std::cout << "JetPt: " << jetET << " regionET: " << regionET << std::endl;
-          assert(false);
-        }
-        UCTCandidate theJet(jetET, convertRegionEta(jetEta), convertRegionPhi(jetPhi));
+	bool neighborCheck = (nNeighbors == 8);
+	// On the eta edge we only expect 5 neighbors
+	if (!neighborCheck && (jetEta == 0 || jetEta == 21) && nNeighbors == 5)
+	  neighborCheck = true;
 
-        theJet.setInt("rgnEta", jetEta);
-        theJet.setInt("rgnPhi", jetPhi);
-        theJet.setInt("rctEta",  newRegion->rctEta());
-        theJet.setInt("rctPhi", newRegion->rctPhi());
-        theJet.setInt("rank", jetET);
+	if (!neighborCheck) {
+	  std::cout << "phi: " << jetPhi << " eta: " << jetEta << " n: " << nNeighbors << std::endl;
+	  std::cout << "JetPt: " << jetET << " regionET: " << regionET << std::endl;
+	  assert(false);
+	}
+	UCTCandidate theJet(jetET, convertRegionEta(jetEta), convertRegionPhi(jetPhi));
+	theJet.setInt("rgnEta", jetEta);
+	theJet.setInt("rgnPhi", jetPhi);
+	theJet.setInt("rctEta",  newRegion->rctEta());
+	theJet.setInt("rctPhi", newRegion->rctPhi());
+	theJet.setInt("rank", jetET);
 
-        theJet.setInt("neighborNW_et", neighborNW_et);
-        theJet.setInt("neighborW_et", neighborW_et);
-        theJet.setInt("neighborSW_et", neighborSW_et);
-        theJet.setInt("neighborNE_et", neighborNE_et);
-        theJet.setInt("neighborE_et", neighborE_et);
-        theJet.setInt("neighborSW_et", neighborSW_et); 
-        theJet.setInt("neighborSE_et", neighborSE_et);
-        theJet.setInt("neighborN_et", neighborN_et);
-        theJet.setInt("neighborS_et", neighborS_et);
-        theJet.setInt("jetseed_et", regionET);
+	theJet.setInt("neighborNW_et", neighborNW_et);
+	theJet.setInt("neighborW_et", neighborW_et);
+	theJet.setInt("neighborSW_et", neighborSW_et);
+	theJet.setInt("neighborNE_et", neighborNE_et);
+	theJet.setInt("neighborE_et", neighborE_et);
+	theJet.setInt("neighborSW_et", neighborSW_et); 
+	theJet.setInt("neighborSE_et", neighborSE_et);
+	theJet.setInt("neighborN_et", neighborN_et);
+	theJet.setInt("neighborS_et", neighborS_et);
+	theJet.setInt("jetseed_et", regionET);
 
-        // Embed the puLevelHI information in the jet object for later tuning
-        theJet.setFloat("puLevelPUM0",puLevelPUM0);
-        theJet.setFloat("puLevelHI", puLevelHI);
-        theJet.setFloat("puLevelHIUIC", puLevelHIUIC);
-        // Store information about the "core" PT of the jet (central region)
-        theJet.setFloat("associatedRegionEt", regionET);
-        jetList.push_back(theJet);
+	// Embed the puLevelHI information in the jet object for later tuning
+	theJet.setFloat("puLevelPUM0",puLevelPUM0);
+	theJet.setFloat("puLevelHI", puLevelHI);
+	theJet.setFloat("puLevelHIUIC", puLevelHIUIC);
+	// Store information about the "core" PT of the jet (central region)
+	theJet.setFloat("associatedRegionEt", regionET);
+	jetList.push_back(theJet);
       }
     }
   }
@@ -644,6 +695,8 @@ UCT2015Producer::correctJets(const list<UCTCandidate>& jets, bool isJet) {
 
     double jpt = jetET*alpha+gamma;
     unsigned int corjetET =(int) jpt;
+
+    //                cout<<"JET :"<<jetET<<"    "<<jet->getInt("rgnEta")<<"    "<<alpha<<"   "<<gamma<<"    -->"<<jpt<<endl;
 
     UCTCandidate newJet(corjetET, convertRegionEta(jet->getInt("rgnEta")), convertRegionPhi(jet->getInt("rgnPhi")));
     newJet.setFloat("uncorrectedPt", jetET);
@@ -677,42 +730,45 @@ UCT2015Producer::correctJets(const list<UCTCandidate>& jets, bool isJet) {
   return corrlist;
 }   // This is outdated now - check with MIT for HI
 
-// Given a region at iphi/ieta, find the highest region in the surrounding
-// regions.
+
+
+// Given a region, find the 12x12 energy around it
 
 double UCT2015Producer::findEnergy12x12(int ieta, int iphi, const L1CaloRegionCollection& regions){
 
-  unsigned int neighborsFound = 0;
-  double energy=0;
+ unsigned int neighborsFound = 0;
+ double energy=0;
 
-  for(L1CaloRegionCollection::const_iterator region = regions.begin();
-      region != regions.end(); region++) {
-    int regionPhi = region->gctPhi();
-    int regionEta = region->gctEta();
-    unsigned int deltaPhi = std::abs(deltaPhiWrapAtN(18, iphi, regionPhi));
-    unsigned int deltaEta = std::abs(ieta - regionEta);
-    if (deltaPhi < 2 && deltaEta < 2) {
-      double regionET = regionPhysicalEt(*region);
-      energy+=regionET;
-      neighborsFound++;
-      if (neighborsFound == 9) { break;}
-    }
-
+ for(L1CaloRegionCollection::const_iterator region = regions.begin();
+   region != regions.end(); region++) {
+  int regionPhi = region->gctPhi();
+  int regionEta = region->gctEta();
+  unsigned int deltaPhi = std::abs(deltaPhiWrapAtN(18, iphi, regionPhi));
+  unsigned int deltaEta = std::abs(ieta - regionEta);
+  if (deltaPhi < 2 && deltaEta < 2) {
+   double regionET = regionPhysicalEt(*region);
+   energy+=regionET;
+   neighborsFound++;
+   if (neighborsFound == 9) { break;}
   }
 
-  return energy;
+ }
+
+ return energy;
 }
 
 
 
 
+// Given a region at iphi/ieta, find the highest region in the surrounding
+// regions.
 void UCT2015Producer::findAnnulusInfo(int ieta, int iphi,
-    const L1CaloRegionCollection& regions,
-    double* associatedSecondRegionEt,
-    double* associatedThirdRegionEt,
-    unsigned int* mipsInAnnulus,
-    unsigned int* egFlagsInAnnulus,
-    unsigned int* mipInSecondRegion) const {
+				      const L1CaloRegionCollection& regions,
+				      double* associatedSecondRegionEt,
+				      double* associatedThirdRegionEt,
+				      unsigned int* mipsInAnnulus,
+				      unsigned int* egFlagsInAnnulus,
+				      unsigned int* mipInSecondRegion) const {
 
   unsigned int neighborsFound = 0;
   unsigned int mipsCount = 0;
@@ -734,26 +790,26 @@ void UCT2015Producer::findAnnulusInfo(int ieta, int iphi,
     if ((deltaPhi + deltaEta) > 0 && deltaPhi < 2 && deltaEta < 2) {
       double regionET = regionPhysicalEt(*region);
       if (regionET > highestNeighborEt) {
-        if(highestNeighborEt!=0) secondNeighborEt=highestNeighborEt;
-        highestNeighborEt = regionET;
-        // Keep track of what flags the highest neighbor has
-        highestNeighborHasMip = region->mip();
-        highestNeighborHasEGFlag = !region->mip() && !region->tauVeto();
+	if(highestNeighborEt!=0) secondNeighborEt=highestNeighborEt;
+	highestNeighborEt = regionET;
+	// Keep track of what flags the highest neighbor has
+	highestNeighborHasMip = region->mip();
+	highestNeighborHasEGFlag = !region->mip() && !region->tauVeto();
       }
 
       // count how many neighbors pass the flags.
       if (region->mip()) {
-        mipsCount++;
+	mipsCount++;
       }
       if (!region->mip() && !region->tauVeto()) {
-        egFlagCount++;
+	egFlagCount++;
       }
 
       // If we already found all 8 neighbors, we don't need to keep looping
       // over the regions.
       neighborsFound++;
       if (neighborsFound == 8) {
-        break;
+	break;
       }
     }
   }
@@ -777,128 +833,130 @@ void UCT2015Producer::makeEGTaus() {
   rlxEGList.clear();
   isoEGList.clear();
   for(L1CaloEmCollection::const_iterator egtCand =
-      newEMCands->begin();
+	newEMCands->begin();
       egtCand != newEMCands->end(); egtCand++){
     double et = egPhysicalEt(*egtCand);
     if(et > egtSeed) {
 
       for(L1CaloRegionCollection::const_iterator region = newRegions->begin();
-          region != newRegions->end(); region++) {
-        if(egtCand->regionId().iphi() == region->gctPhi() &&
-            egtCand->regionId().ieta() == region->gctEta())
-        {
-          double regionEt = regionPhysicalEt(*region);
+	  region != newRegions->end(); region++) {
+	if(egtCand->regionId().iphi() == region->gctPhi() &&
+	   egtCand->regionId().ieta() == region->gctEta())
+	  {
+	    double regionEt = regionPhysicalEt(*region);
 
-          bool isEle=false;
-          if(et<40 && (!region->tauVeto() && !region->mip() )) isEle=true;      
-          if(et>=40 && et<63 && (!region->mip() )) isEle=true;
-          if(et>=63) isEle=true;
+	    bool isEle=false;
+	    if(et<40 && (!region->tauVeto() && !region->mip() )) isEle=true;      
+	    if(et>=40 && et<63 && (!region->mip() )) isEle=true;
+	    if(et>=63) isEle=true;
 
-          isEle=true;  // Lets rescue the old LUT
+	    isEle=true;  // Lets rescue the old LUT
 
-          // Find the highest region in the 3x3 annulus around the center
-          // region.
-          double associatedSecondRegionEt = 0;
-          double associatedThirdRegionEt = 0;
-          unsigned int mipsInAnnulus = 0;
-          unsigned int egFlagsInAnnulus = 0;
-          unsigned int mipInSecondRegion = 0;
-          findAnnulusInfo(
-              egtCand->regionId().ieta(), egtCand->regionId().iphi(),
-              *newRegions,
-              &associatedSecondRegionEt, &associatedThirdRegionEt, &mipsInAnnulus, &egFlagsInAnnulus,
-              &mipInSecondRegion);
+	    // Find the highest region in the 3x3 annulus around the center
+	    // region.
+	    double associatedSecondRegionEt = 0;
+	    double associatedThirdRegionEt = 0;
+	    unsigned int mipsInAnnulus = 0;
+	    unsigned int egFlagsInAnnulus = 0;
+	    unsigned int mipInSecondRegion = 0;
+	    findAnnulusInfo(
+			    egtCand->regionId().ieta(), egtCand->regionId().iphi(),
+			    *newRegions,
+			    &associatedSecondRegionEt, &associatedThirdRegionEt, &mipsInAnnulus, &egFlagsInAnnulus,
+			    &mipInSecondRegion);
 
-          double energy12x12=findEnergy12x12(egtCand->regionId().ieta(), egtCand->regionId().iphi(),*newRegions);
+           double energy12x12=findEnergy12x12(egtCand->regionId().ieta(), egtCand->regionId().iphi(),*newRegions);
+
+	    UCTCandidate egtauCand(
+				   et,
+				   convertRegionEta(egtCand->regionId().ieta()),
+				   convertRegionPhi(egtCand->regionId().iphi()));
+
+	    /*            UCTCandidate tauCand(
+			  regionEt,
+			  convertRegionEta(egtCand->regionId().ieta()),
+			  convertRegionPhi(egtCand->regionId().iphi()));
+	    */
 
 
-          UCTCandidate egtauCand(
-              et,
-              convertRegionEta(egtCand->regionId().ieta()),
-              convertRegionPhi(egtCand->regionId().iphi()));
+	    // Add extra information to the candidate
+	    egtauCand.setInt("rgnEta", egtCand->regionId().ieta());
+	    egtauCand.setInt("rgnPhi", egtCand->regionId().iphi());
+	    egtauCand.setInt("rctEta", egtCand->regionId().rctEta());
+	    egtauCand.setInt("rctPhi", egtCand->regionId().rctPhi());
+	    egtauCand.setInt("rank", egtCand->rank());
+	    egtauCand.setFloat("associatedJetPt", -3);
+	    egtauCand.setFloat("associatedRegionEt", regionEt);
+	    egtauCand.setFloat("associatedSecondRegionEt", associatedSecondRegionEt);
+	    egtauCand.setInt("associatedSecondRegionMIP", mipInSecondRegion);
+	    egtauCand.setFloat("puLevelHI", puLevelHI);
+	    egtauCand.setFloat("puLevelHIUIC", puLevelHIUIC);
+	    egtauCand.setFloat("puLevelPUM0",puLevelPUM0);
+	    egtauCand.setInt("ellIsolation", egtCand->isolated());
+	    egtauCand.setInt("tauVeto", region->tauVeto());
+	    egtauCand.setInt("mipBit", region->mip());
+	    egtauCand.setInt("isEle", isEle);
+            egtauCand.setFloat("energy12x12", energy12x12);
 
-          // Add extra information to the candidate
-          egtauCand.setInt("rgnEta", egtCand->regionId().ieta());
-          egtauCand.setInt("rgnPhi", egtCand->regionId().iphi());
-          egtauCand.setInt("rctEta", egtCand->regionId().rctEta());
-          egtauCand.setInt("rctPhi", egtCand->regionId().rctPhi());
-          egtauCand.setInt("rank", egtCand->rank());
-          egtauCand.setFloat("associatedJetPt", -3);
-          egtauCand.setFloat("associatedRegionEt", regionEt);
-          egtauCand.setFloat("associatedSecondRegionEt", associatedSecondRegionEt);
-          egtauCand.setInt("associatedSecondRegionMIP", mipInSecondRegion);
-          egtauCand.setFloat("puLevelHI", puLevelHI);
-          egtauCand.setFloat("puLevelHIUIC", puLevelHIUIC);
-          egtauCand.setFloat("puLevelPUM0",puLevelPUM0);
-          egtauCand.setInt("ellIsolation", egtCand->isolated());
-          egtauCand.setInt("tauVeto", region->tauVeto());
-          egtauCand.setInt("mipBit", region->mip());
-          egtauCand.setInt("isEle", isEle);
-          egtauCand.setFloat("energy12x12", energy12x12);
+            // A 2x1 and 1x2 cluster above egtSeed is always in tau list
+            rlxTauList.push_back(egtauCand);
 
-          // A 2x1 and 1x2 cluster above egtSeed is always in tau list
-          rlxTauList.push_back(egtauCand);
-
-          if (isEle){
-            rlxEGList.push_back(egtauCand);
-          }
-          double jetIsolationEG = energy12x12 - et;        // Jet isolation
-          double relativeJetIsolationEG = jetIsolationEG / et;
-
-          bool isolatedEG=false;
-          if(et<63 && relativeJetIsolationEG < relativeJetIsolationCut)  isolatedEG=true;; 
-          if (et>=63) isolatedEG=true;;
-
-          if(isEle){
-            rlxEGList.back().setInt("isIsolated",isolatedEG);
-            if(isolatedEG){
-              isoEGList.push_back(rlxEGList.back());
+            if (isEle){
+              rlxEGList.push_back(egtauCand);
             }
-          }
+            double jetIsolationEG = energy12x12 - et;        // Jet isolation
+            double relativeJetIsolationEG = jetIsolationEG / et;
 
+            bool isolatedEG=false;
+            if(et<63 && relativeJetIsolationEG < relativeJetIsolationCut)  isolatedEG=true;;
+            if (et>=63) isolatedEG=true;;
 
-
-          // Look for overlapping jet and require that isolation be passed
-          bool MATCHEDJETFOUND_=false;        
-          for(list<UCTCandidate>::iterator jet = jetList.begin(); jet != jetList.end(); jet++) {
-
-            if((int)egtCand->regionId().iphi() == jet->getInt("rgnPhi") &&
-                (int)egtCand->regionId().ieta() == jet->getInt("rgnEta")) {
-              // Embed tuning parameters into the relaxed objects
-              rlxTauList.back().setFloat("associatedJetPt", jet->pt());
-
-              MATCHEDJETFOUND_=true;
-
-              // EG ID enabled! MC
-              if (isEle){
-                rlxEGList.back().setFloat("associatedJetPt", jet->pt());
-                bool isHighPtEle=true;                      
-                if(jet->pt()>2*regionEt) isHighPtEle=false;
-                rlxEGList.back().setInt("isHighPtEle",isHighPtEle);
+            if(isEle){
+              rlxEGList.back().setInt("isIsolated",isolatedEG);
+              if(isolatedEG){
+                 isoEGList.push_back(rlxEGList.back());
               }
-
-              break;
             }
-          }
-          if(!MATCHEDJETFOUND_ && isEle) {
-            rlxEGList.back().setFloat("associatedJetPt",-777);
-            rlxEGList.back().setInt("isHighPtEle",true);        
-            //                                                rlxEGList.back().setInt("isIsolated",true);
-            //                                                isoEGList.push_back(rlxEGList.back());
-          }
-          break;
-        }
+
+	    // Look for overlapping jet and require that isolation be passed
+	    //                                          for(list<UCTCandidate>::iterator jet = corrJetList.begin(); jet != corrJetList.end(); jet++) { 
+	    bool MATCHEDJETFOUND_=false;        
+	    for(list<UCTCandidate>::iterator jet = jetList.begin(); jet != jetList.end(); jet++) {
+
+	      if((int)egtCand->regionId().iphi() == jet->getInt("rgnPhi") &&
+		 (int)egtCand->regionId().ieta() == jet->getInt("rgnEta")) {
+		// Embed tuning parameters into the relaxed objects
+		rlxTauList.back().setFloat("associatedJetPt", jet->pt());
+
+		MATCHEDJETFOUND_=true;
+
+		// EG ID enabled! MC
+		if (isEle){
+		  rlxEGList.back().setFloat("associatedJetPt", jet->pt());
+		  bool isHighPtEle=true;                      
+		  if(jet->pt()>2*regionEt) isHighPtEle=false;
+		  rlxEGList.back().setInt("isHighPtEle",isHighPtEle);
+		}
+
+
+	      }
+	    }
+	    if(!MATCHEDJETFOUND_ && isEle) {
+	      rlxEGList.back().setFloat("associatedJetPt",-777);
+	      rlxEGList.back().setInt("isHighPtEle",true);        
+	      isoEGList.push_back(rlxEGList.back());
+	    }
+	    break;
+	  }
       }
     }
   }
   rlxEGList.sort();
   rlxTauList.sort();
   isoEGList.sort();
-  isoTauList.sort();
   rlxEGList.reverse();
   rlxTauList.reverse();
   isoEGList.reverse();
-  isoTauList.reverse();
 
 }
 
@@ -916,67 +974,67 @@ void UCT2015Producer::makeTaus() {
     unsigned int egFlagsInAnnulus = 0;
     unsigned int mipInSecondRegion = 0;
     findAnnulusInfo(
-        region->id().ieta(), region->id().iphi(),
-        *newRegions,
-        &associatedSecondRegionEt, &associatedThirdRegionEt,  &mipsInAnnulus, &egFlagsInAnnulus,
-        &mipInSecondRegion);
+		    region->id().ieta(), region->id().iphi(),
+		    *newRegions,
+		    &associatedSecondRegionEt, &associatedThirdRegionEt,  &mipsInAnnulus, &egFlagsInAnnulus,
+		    &mipInSecondRegion);
 
     double tauEt=regionEt;
     //            if(associatedSecondRegionEt>tauSeed)  tauEt +=associatedSecondRegionEt;
 
     UCTCandidate tauCand(
-        tauEt,
-        convertRegionEta(region->id().ieta()),    // this is wrong (should take into acount the neighbours and center the tau in the division
-                 convertRegionPhi(region->id().iphi()));   // also, two taus will appear! we need to remove one
+			 tauEt,
+			 convertRegionEta(region->id().ieta()),    // this is wrong (should take into acount the neighbours and center the tau in the division
+			 convertRegionPhi(region->id().iphi()));   // also, two taus will appear! we need to remove one
 
 
-        tauCand.setInt("gctEta", region->gctEta());
-        tauCand.setInt("gctPhi", region->gctPhi());
-        tauCand.setInt("rgnEta", region->id().ieta());
-        tauCand.setInt("rgnPhi", region->id().iphi());
-        tauCand.setInt("rctEta", region->id().rctEta());
-        tauCand.setInt("rctPhi", region->id().rctPhi());
-        tauCand.setFloat("associatedJetPt", -3);
-        tauCand.setFloat("associatedRegionEt", regionEt);
-        tauCand.setFloat("puLevelHI", puLevelHI);
-        tauCand.setFloat("puLevelHIUIC", puLevelHIUIC);
-        tauCand.setFloat("puLevelPUM0",puLevelPUM0);
-        tauCand.setInt("tauVeto", region->tauVeto());
-        tauCand.setInt("mipBit", region->mip());
-        tauCand.setFloat("associatedSecondRegionEt", associatedSecondRegionEt);
-        tauCand.setInt("associatedSecondRegionMIP", mipInSecondRegion);
-        tauCand.setFloat("associatedThirdRegionEt", associatedThirdRegionEt);
+    tauCand.setInt("gctEta", region->gctEta());
+    tauCand.setInt("gctPhi", region->gctPhi());
+    tauCand.setInt("rgnEta", region->id().ieta());
+    tauCand.setInt("rgnPhi", region->id().iphi());
+    tauCand.setInt("rctEta", region->id().rctEta());
+    tauCand.setInt("rctPhi", region->id().rctPhi());
+    tauCand.setFloat("associatedJetPt", -3);
+    tauCand.setFloat("associatedRegionEt", regionEt);
+    tauCand.setFloat("puLevelHI", puLevelHI);
+    tauCand.setFloat("puLevelHIUIC", puLevelHIUIC);
+    tauCand.setFloat("puLevelPUM0",puLevelPUM0);
+    tauCand.setInt("tauVeto", region->tauVeto());
+    tauCand.setInt("mipBit", region->mip());
+    tauCand.setFloat("associatedSecondRegionEt", associatedSecondRegionEt);
+    tauCand.setInt("associatedSecondRegionMIP", mipInSecondRegion);
+    tauCand.setFloat("associatedThirdRegionEt", associatedThirdRegionEt);
 
-        rlxTauRegionOnlyList.push_back(tauCand);
+    rlxTauRegionOnlyList.push_back(tauCand);
 
+                        
+    bool MATCHEDJETFOUND_=false;
+    // Look for overlapping jet and require that isolation be passed
+    for(list<UCTCandidate>::iterator jet = jetList.begin(); jet != jetList.end(); jet++) {
+      //                                  for(list<UCTCandidate>::iterator jet = corrJetList.begin(); jet != corrJetList.end(); jet++) {      
+      if((int)region->gctPhi() == jet->getInt("rgnPhi") &&
+	 (int)region->gctEta() == jet->getInt("rgnEta")) {
+	MATCHEDJETFOUND_=true;
+	rlxTauRegionOnlyList.back().setFloat("associatedJetPt", jet->pt());
 
-        bool MATCHEDJETFOUND_=false;
-        // Look for overlapping jet and require that isolation be passed
-        for(list<UCTCandidate>::iterator jet = jetList.begin(); jet != jetList.end(); jet++) {
-          //                                  for(list<UCTCandidate>::iterator jet = corrJetList.begin(); jet != corrJetList.end(); jet++) {      
-          if((int)region->gctPhi() == jet->getInt("rgnPhi") &&
-              (int)region->gctEta() == jet->getInt("rgnEta")) {
-            MATCHEDJETFOUND_=true;
-            rlxTauRegionOnlyList.back().setFloat("associatedJetPt", jet->pt());
+	double jetIsolation = jet->pt() - regionEt;        // Jet isolation
+	double relativeJetIsolation = jetIsolation / regionEt;
+	if(relativeJetIsolation < relativeTauIsolationCut || regionEt > switchOffTauIso){
+	  isoTauRegionOnlyList.push_back(rlxTauRegionOnlyList.back());
+	}
 
-            double jetIsolation = jet->pt() - regionEt;        // Jet isolation
-            double relativeJetIsolation = jetIsolation / regionEt;
-            if(relativeJetIsolation < relativeTauIsolationCut || regionEt > switchOffTauIso){
-              isoTauRegionOnlyList.push_back(rlxTauRegionOnlyList.back());
-            }
-
-            break;
-          }
-        }
-        if(!MATCHEDJETFOUND_){ 
-          rlxTauRegionOnlyList.back().setFloat("associatedJetPt", -777);
-          isoTauRegionOnlyList.push_back(rlxTauRegionOnlyList.back());
-        }       
-        }
-        rlxTauRegionOnlyList.sort();
-        isoTauRegionOnlyList.sort();
-        rlxTauRegionOnlyList.reverse();
-        isoTauRegionOnlyList.reverse();
+	break;
+      }
+    }
+    if(!MATCHEDJETFOUND_){ 
+      rlxTauRegionOnlyList.back().setFloat("associatedJetPt", -777);
+      isoTauRegionOnlyList.push_back(rlxTauRegionOnlyList.back());
+    }       
+  }
+  rlxTauRegionOnlyList.sort();
+  isoTauRegionOnlyList.sort();
+  rlxTauRegionOnlyList.reverse();
+  isoTauRegionOnlyList.reverse();
 
 
 
