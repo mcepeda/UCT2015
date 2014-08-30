@@ -6,12 +6,15 @@ from L1Trigger.L1ExtraFromDigis.l1extraParticles_cfi import *
 uctGctDigis =cms.EDProducer("UCT2015GctCandsProducer",
     egRelaxed = cms.InputTag("UCT2015Producer","RelaxedEGUnpacked"),
     egIsolated  = cms.InputTag("UCT2015Producer","IsolatedEGUnpacked"),
+    tauRelaxed  = cms.InputTag("UCT2015Producer","RelaxedTauUnpacked"), # to switch to iso taus, do it here
     tauIsolated  = cms.InputTag("UCT2015Producer","IsolatedTauUnpacked"), # to switch to iso taus, do it here
     jetSource  = cms.InputTag("UCT2015Producer","CorrJetUnpacked"),
     setSource  = cms.InputTag("UCT2015Producer","SETUnpacked"),
     metSource  = cms.InputTag("UCT2015Producer","METUnpacked"),
     shtSource  = cms.InputTag("UCT2015Producer","SHTUnpacked"),
-    mhtSource  = cms.InputTag("UCT2015Producer","MHTUnpacked")
+    mhtSource  = cms.InputTag("UCT2015Producer","MHTUnpacked"),
+    saturateEG = cms.bool(True),
+    ditauThresholds = cms.vint32(30,35,40,50)
 )
 
 l1extraParticlesUCT = cms.EDProducer("L1ExtraParticlesProd",

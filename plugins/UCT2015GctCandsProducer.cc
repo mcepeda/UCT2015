@@ -50,17 +50,18 @@ using std::vector;
 UCT2015GctCandsProducer::UCT2015GctCandsProducer(const edm::ParameterSet& ps) :
   egSourceRlx_(ps.getParameter<edm::InputTag>("egRelaxed")),
   egSourceIso_(ps.getParameter<edm::InputTag>("egIsolated")),
+  tauSourceRlx_(ps.getParameter<edm::InputTag>("tauRelaxed")),
   tauSourceIso_(ps.getParameter<edm::InputTag>("tauIsolated")),
   jetSource_(ps.getParameter<edm::InputTag>("jetSource")),
   setSource_(ps.getParameter<edm::InputTag>("setSource")),
   shtSource_(ps.getParameter<edm::InputTag>("shtSource")),
   metSource_(ps.getParameter<edm::InputTag>("metSource")),
   mhtSource_(ps.getParameter<edm::InputTag>("mhtSource")),
-  saturateEG_(ps.getUntrackedParameter<bool>("saturateEG",true)),
+  saturateEG_(ps.getParameter<bool>("saturateEG")),
+  ditauThresholds_(ps.getParameter<vector<int>>("ditauThresholds")),
   maxEGs_(ps.getUntrackedParameter<int>("maxEGs",4)),
   maxIsoEGs_(ps.getUntrackedParameter<int>("maxIsoEGs",4)),
   maxTaus_(ps.getUntrackedParameter<int>("maxTaus",4)),
-  maxIsoTaus_(ps.getUntrackedParameter<int>("maxIsoTaus",4)),
   maxJets_(ps.getUntrackedParameter<int>("maxJets",4))
  {
 
@@ -141,7 +142,11 @@ void UCT2015GctCandsProducer::produce(edm::Event& e, const edm::EventSetup& c) {
 
    double etSumLSB = jetScale->linearLsb() ;
    double htSumLSB = jetFinderParams->getHtLsbGeV();
-   
+  
+   edm::ESHandle< L1CaloEtScale > hfRingEtScale ;
+   c.get< L1HfRingEtScaleRcd >().get( hfRingEtScale ) ; // which record?
+
+ 
   // And here we go! fro UCT objects to something that the GT will understand
 
      // EG
@@ -212,17 +217,16 @@ void UCT2015GctCandsProducer::produce(edm::Event& e, const edm::EventSetup& c) {
       }
 
 
-     // isoTAU
-     // We'll only use this one    
-      edm::Handle< UCTCandidateCollection > tauObjsIso ;
-      e.getByLabel( tauSourceIso_, tauObjsIso ) ;
+     // Standard Tau Collection will have relaxed taus for Lepton+Tau triggers
+      edm::Handle< UCTCandidateCollection > tauObjsRlx ;
+      e.getByLabel( tauSourceRlx_, tauObjsRlx ) ;
 
-      if( !tauObjsIso.isValid() ) {
-                edm::LogError("")<<"isoTAU Collection not found - check name";
+      if( !tauObjsRlx.isValid() ) {
+                edm::LogError("")<<"TAU Collection not found - check name";
       }
       else {
-                for( unsigned int i = 0 ; i<tauObjsIso->size() && i<maxIsoTaus_; i++){
-                        UCTCandidate itr=tauObjsIso->at(i);
+                for( unsigned int i = 0 ; i<tauObjsRlx->size() && i<maxTaus_; i++){
+                        UCTCandidate itr=tauObjsRlx->at(i);
                         unsigned iEta=itr.getInt("rgnEta");
                         unsigned iPhi=itr.getInt("rgnPhi");
                         unsigned rctEta=itr.getInt("rctEta");
@@ -235,16 +239,71 @@ void UCT2015GctCandsProducer::produce(edm::Event& e, const edm::EventSetup& c) {
                         bool isFor=false;
                         bool isTau=true;
                         L1GctJetCand gctJetCand=L1GctJetCand(rank, hwPhi, hwEta, isTau , isFor,(uint16_t) 0, (uint16_t) 0, bx);
-                        isoTauResult->push_back( gctJetCand  );
+                        rlxTauResult->push_back( gctJetCand  );
 
                 }
-                if(isoTauResult->size()<maxIsoTaus_)
-                        for ( unsigned int j = 0 ; j<(maxIsoTaus_-isoTauResult->size()); j++){
+                if(rlxTauResult->size()<maxTaus_)
+                        for ( unsigned int j = 0 ; j<(maxTaus_-rlxTauResult->size()); j++){
                                 L1GctJetCand gctJetCand=L1GctJetCand( 0,(unsigned)0,(unsigned)0,1,0,(uint16_t) 0, (uint16_t) 0, 0);
-                                isoTauResult->push_back( gctJetCand  );
+                                rlxTauResult->push_back( gctJetCand  );
                         }
 
       }
+
+      // Isolated Taus for DiTau Hacked triggers
+
+      edm::Handle< UCTCandidateCollection > tauObjsIso ;
+      e.getByLabel( tauSourceIso_, tauObjsIso ) ;
+
+      if( !tauObjsIso.isValid() ) {
+                edm::LogError("")<<"isoTAU Collection not found - check name";
+      }
+      else {
+
+               int16_t passDiTauThres[4];
+               const int16_t bx=0;
+               int countDiTau[4]={0,0,0,0};
+
+               if(ditauThresholds_.size()>4)
+               edm::LogWarning("")<<"You have requested more than 4 DiTau Thresholds. Currently the UCT is not setup for more than 4"; 
+
+
+                for( unsigned int i = 0 ; i<tauObjsIso->size(); i++){
+                        UCTCandidate itr=tauObjsIso->at(i);
+                        double pt=itr.pt();
+                        for (unsigned int j=0; j<ditauThresholds_.size(); j++){
+                           if(pt>ditauThresholds_.at(j)) countDiTau[j]++;
+                        }
+              }
+              for (unsigned int j=0; j<ditauThresholds_.size() && j<4; j++){
+                    if( countDiTau[j]>1) passDiTauThres[j]=1;
+                    else  passDiTauThres[j]=0;
+              }
+
+              // Right now I am only setting this up for 4 different thresholds.
+              // In order to set it up for more WPs, we need to play with the 
+              // bits in passDiTauThres (the hfrings in the emulator take a 3x16 bit integers, we can encode 
+              // our response to that using the bits - that was Manfred's plan). Hopefully that 
+              // more refined approach can be done directly in the emulator. 
+
+              // Only filling bx 0!
+              L1GctHFRingEtSums temp =L1GctHFRingEtSums::fromGctEmulator(bx, 
+                                                                passDiTauThres[0],
+                                                                passDiTauThres[1],
+                                                                passDiTauThres[2],
+                                                                passDiTauThres[3]);
+                hfRingEtSumResult->push_back(temp);
+
+            // How to access this thing
+            //for (L1GctHFRingEtSumsCollection::const_iterator es = hfRingEtSumResult->begin(); es !=hfRingEtSumResult->end(); es++) {
+            //  std::cout<<"Accessing the sums..."<<std::endl;
+            //  if (es->bx()==0) {
+            //  std::cout<<"Test Rings: "<<es->etSum(0)<<"   "<<es->etSum(1)<<"   "<<es->etSum(1)<<"  "<<es->etSum(2)<<std::endl; 
+            // }}
+
+      }
+
+
 
 
     // Jets
@@ -394,8 +453,8 @@ void UCT2015GctCandsProducer::produce(edm::Event& e, const edm::EventSetup& c) {
   e.put(rlxEmResult,"nonIsoEm");
   e.put(isoEmResult,"isoEm");
 
-  e.put(isoTauResult,"tauJets");
-//  e.put(rlxTauResult,"rlxTau");
+  e.put(rlxTauResult,"tauJets");
+//  e.put(isoTauResult,"rlxTau");
 
   e.put(cenJetResult,"cenJets");
   e.put(forJetResult,"forJets");

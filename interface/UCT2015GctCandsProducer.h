@@ -34,7 +34,7 @@ class UCT2015GctCandsProducer : public edm::EDProducer {
   void produce(edm::Event& e, const edm::EventSetup& c);
   void endJob() ;
 
-  // untracked parameters
+  // parameters
   edm::InputTag egSourceRlx_;
   edm::InputTag egSourceIso_;
 
@@ -49,13 +49,14 @@ class UCT2015GctCandsProducer : public edm::EDProducer {
 
   bool saturateEG_;
 
+  std::vector<int> ditauThresholds_;
+
+  // untracked parameters
+
   unsigned int maxEGs_;
   unsigned int maxIsoEGs_;
   unsigned int maxTaus_;
-  unsigned int maxIsoTaus_;
   unsigned int maxJets_;
-
-  // tracked parameters
 
 };
 
